@@ -1,20 +1,22 @@
 const { v4: uuidv4 } = require("uuid");
 const { validationResult } = require("express-validator");
+const User = require("../models/user");
 
-const DUMMY_USERS = [
-  {
-    id: "u1",
-    name: "john doe",
-    email: "johndoe123@gmail.com",
-    password: "test123",
-  },
-];
-
-const getUsers = (req, res, next) => {
-  res.status(200).json({ users: DUMMY_USERS });
+const getUsers = async (req, res, next) => {
+  let users;
+  try {
+    users = await User.find({}, "-password");
+  } catch {
+    (err) => {
+      return next(err);
+    };
+  }
+  res
+    .status(200)
+    .json({ users: users.map((user) => user.toObject({ getters: true })) });
 };
 
-const signUp = (req, res, next) => {
+const signUp = async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
     res.json({
@@ -23,23 +25,36 @@ const signUp = (req, res, next) => {
     });
   }
   const { name, email, password } = req.body;
-  const hasUser = DUMMY_USERS.find((u) => u.email === email);
+  let hasUser;
+  try {
+    hasUser = await User.findOne({ email: email });
+  } catch {
+    (err) => {
+      return next(err);
+    };
+  }
   if (hasUser) {
     res
       .status(422)
-      .json({ error: "User already exists with the same email id." });
+      .json({ error: "User already exists with the same mail Id." });
   }
-  const newUser = {
-    id: uuidv4(),
+  const newUser = new User({
     name,
     email,
     password,
-  };
+  });
+  try {
+    await newUser.save();
+  } catch {
+    (err) => {
+      return next(err);
+    };
+  }
   DUMMY_USERS.push(newUser);
-  res.status(201).json({ newuser: newUser });
+  res.status(201).json({ newuser: newUser.toObject({ getters: true }) });
 };
 
-const logIn = (req, res, next) => {
+const logIn = async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
     res.json({
@@ -48,7 +63,14 @@ const logIn = (req, res, next) => {
     });
   }
   const { email, password } = req.body;
-  const existingUser = DUMMY_USERS.find((u) => u.email === email);
+  let existingUser;
+  try {
+    existingUser = await User.findOne({ email: email });
+  } catch {
+    (err) => {
+      return next(err);
+    };
+  }
   if (!existingUser || existingUser.password !== password) {
     res.status(401).json({ error: "Invalid credentials enetered." });
   }
