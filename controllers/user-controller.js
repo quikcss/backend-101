@@ -1,28 +1,16 @@
-const { v4: uuidv4 } = require("uuid");
 const { validationResult } = require("express-validator");
 const User = require("../models/user");
-
-const getUsers = async (req, res, next) => {
-  let users;
-  try {
-    users = await User.find({}, "-password");
-  } catch {
-    (err) => {
-      return next(err);
-    };
-  }
-  res
-    .status(200)
-    .json({ users: users.map((user) => user.toObject({ getters: true })) });
-};
 
 const signUp = async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    res.json({
-      error:
-        "Name, email can not be blank and password must me of atleast 5 characters.",
-    });
+    return next(
+      res.json({
+        message:
+          "Name, email can not be blank and password must me of atleast 5 characters.",
+        status: false,
+      })
+    );
   }
   const { name, email, password } = req.body;
   let hasUser;
@@ -34,9 +22,12 @@ const signUp = async (req, res, next) => {
     };
   }
   if (hasUser) {
-    res
-      .status(422)
-      .json({ error: "User already exists with the same mail Id." });
+    return next(
+      res.json({
+        message: "User already exists with the same mail Id.",
+        status: false,
+      })
+    );
   }
   const newUser = new User({
     name,
@@ -50,17 +41,19 @@ const signUp = async (req, res, next) => {
       return next(err);
     };
   }
-  DUMMY_USERS.push(newUser);
-  res.status(201).json({ newuser: newUser.toObject({ getters: true }) });
+  res.status(201).json({ message: name, status: true });
 };
 
 const logIn = async (req, res, next) => {
   const error = validationResult(req);
   if (!error.isEmpty()) {
-    res.json({
-      error:
-        "Email can not be blank and password must be of atleast 5 characters.",
-    });
+    return next(
+      res.json({
+        message:
+          "Email can not be blank and password must be of atleast 5 characters.",
+        status: false,
+      })
+    );
   }
   const { email, password } = req.body;
   let existingUser;
@@ -72,11 +65,12 @@ const logIn = async (req, res, next) => {
     };
   }
   if (!existingUser || existingUser.password !== password) {
-    res.status(401).json({ error: "Invalid credentials enetered." });
+    return next(
+      res.json({ message: "Invalid credentials enetered.", status: false })
+    );
   }
-  res.status(200).json({ message: "Login successful..." });
+  res.status(200).json({ message: existingUser.name, status: true });
 };
 
-exports.getUsers = getUsers;
 exports.signUp = signUp;
 exports.logIn = logIn;
